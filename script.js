@@ -1,126 +1,84 @@
-class ADFGVXCipher {
-  constructor() {
-      // Таблица замены 
-      this.substitutionTable = {
-          'A': 'AD', 'B': 'AG', 'C': 'AV', 'D': 'AX',
-          'E': 'FD', 'F': 'FG', 'G': 'FV', 'H': 'FX',
-          'I': 'GD', 'J': 'GG', 'K': 'GV', 'L': 'GX',
-          'M': 'VD', 'N': 'VG', 'O': 'VV', 'P': 'VX',
-          'Q': 'XD', 'R': 'XG', 'S': 'XV', 'T': 'XX',
-          'U': 'DA', 'V': 'DG', 'W': 'DV', 'X': 'DX',
-          'Y': 'FA', 'Z': 'FG'
-      };
-  }
-
-  // Шифрование
-  encrypt(text, key) {
-      // Преобразование текста в верхний регистр и удаление пробелов
-      text = text.toUpperCase().replace(/\s+/g, '');
-      let encodedText = '';
-
-      // Замена символов
-      for (let char of text) {
-          if (this.substitutionTable[char]) {
-              encodedText += this.substitutionTable[char];
-          }
-      }
-
-      // Сортировка ключа
-      const sortedKey = key.split('').sort().join('');
-      const columns = Math.ceil(encodedText.length / key.length);
-      const grid = Array.from({ length: key.length }, () => []);
-
-      // Заполнение сетки
-      for (let i = 0; i < encodedText.length; i++) {
-          const col = i % key.length;
-          grid[col].push(encodedText[i]);
-      }
-
-      // Создание зашифрованного текста
-      let encryptedText = '';
-      for (let char of sortedKey) {
-          const index = key.indexOf(char);
-          encryptedText += grid[index].join('');
-          grid[index] = []; // Удаляем использованные символы
-      }
-
-      return encryptedText;
-  }
-
-  // Дешифрование
-  decrypt(text, key) {
-      const sortedKey = key.split('').sort().join('');
-      const columns = Math.ceil(text.length / key.length);
-      const grid = Array.from({ length: key.length }, () => []);
-      
-      let index = 0;
-
-      // Заполнение сетки по отсортированному ключу
-      for (let char of sortedKey) {
-          const col = key.indexOf(char);
-          for (let i = 0; i < columns; i++) {
-              if (index < text.length) {
-                  grid[col].push(text[index++]);
-              }
-          }
-      }
-
-      // Чтение по строкам
-      let decryptedText = '';
-      for (let i = 0; i < columns; i++) {
-          for (let j = 0; j < key.length; j++) {
-              if (grid[j][i]) {
-                  decryptedText += grid[j][i];
-              }
-          }
-      }
-
-      // Обратная замена
-      let originalText = '';
-      for (let i = 0; i < decryptedText.length; i += 2) {
-          const pair = decryptedText.substring(i, i + 2);
-          const char = Object.keys(this.substitutionTable).find(key => this.substitutionTable[key] === pair);
-          if (char) {
-              originalText += char;
-          }
-      }
-
-      return originalText;
-  }
-
-  // Функция для учета регистра при выводе
-  preserveCase(originalText, transformedText) {
-      let result = '';
-      for (let i = 0; i < originalText.length; i++) {
-          // Проверяем, существует ли символ в transformedText
-          if (i < transformedText.length) {
-              if (originalText[i] === originalText[i].toUpperCase()) {
-                  result += transformedText[i].toUpperCase();
-              } else {result += transformedText[i].toLowerCase();
-              }
-          } else {
-              // Если символа нет, добавляем пробел или другой символ
-              result += originalText[i];
-          }
-      }
-      return result;
-  }
+class ADFGVX {
+    constructor() {
+        this.substitutionTable = {
+            'A': 'AA', 'B': 'AD', 'C': 'AF', 'D': 'AG',
+            'E': 'AV', 'F': 'AX', 'G': 'DA', 'H': 'DD',
+            'I': 'DF', 'J': 'DG', 'K': 'DV', 'L': 'DX',
+            'M': 'FA', 'N': 'FD', 'O': 'FF', 'P': 'FG',
+            'Q': 'FV', 'R': 'FX', 'S': 'GA', 'T': 'GD',
+            'U': 'GF', 'V': 'GG', 'W': 'GV', 'X': 'GX',
+            'Y': 'VA', 'Z': 'VD', ' ': 'VF' 
+        };
+        this.reverseSubstitutionTable = Object.fromEntries(
+            Object.entries(this.substitutionTable).map(([key, value]) => [value, key])
+        );
+    }
+    getInputValues() {
+        const text = document.getElementById('inputText').value.toUpperCase();
+        const key = document.getElementById('key').value.toUpperCase();
+        return { text, key };
+    }
+    encrypt() {
+        const { text, key } = this.getInputValues();
+        let encodedText = '';
+        // Замена символов на пары
+        for (let char of text) {
+            encodedText += this.substitutionTable[char] || ''; // Игнорируем символы, не входящие в таблицу
+        }
+        // Дополнение текста до кратности длине ключа
+        const columns = Math.ceil(encodedText.length / key.length);
+        const paddedText = encodedText.padEnd(columns * key.length, 'X');
+        const grid = Array.from({ length: key.length }, () => []);
+        // Заполнение таблицы транспозиции
+        for (let i = 0; i < paddedText.length; i++) {
+            const col = i % key.length;
+            grid[col].push(paddedText[i]);
+        }
+        // Сортировка ключа и формирование итогового сообщения
+        const sortedKeyIndices = key.split('').map((char, index) => ({ char, index }))
+            .sort((a, b) => a.char.localeCompare(b.char))
+            .map(({ index }) => index);
+        
+        let encryptedText = '';
+        for (let index of sortedKeyIndices) {
+            encryptedText += grid[index].join('');
+        }
+        document.getElementById('outputText').value = encryptedText;
+    }
+    decrypt() {
+        const { text, key } = this.getInputValues();
+        const columns = Math.ceil(text.length / key.length);
+        const grid = Array.from({ length: key.length }, () => Array(columns).fill(''));
+        // Восстановление индексов столбцов
+        const sortedKeyIndices = key.split('').map((char, index) => ({ char, index }))
+            .sort((a, b) => a.char.localeCompare(b.char));
+        let index = 0;
+        for (let { index: sortedIndex } of sortedKeyIndices) {
+            for (let j = 0; j < columns; j++) {
+                if (index < text.length) {
+                    grid[sortedIndex][j] = text[index++];
+                }
+            }
+        }
+        // Чтение по строкам
+        let decryptedText = '';
+        for (let i = 0; i < columns; i++) {
+            for (let j = 0; j < key.length; j++) {
+                decryptedText += grid[j][i];
+            }
+        }
+        // Обратная замена
+        let originalText = '';
+        for (let i = 0; i < decryptedText.length; i += 2) {
+            const pair = decryptedText.substring(i, i + 2);
+            originalText += this.reverseSubstitutionTable[pair] || ''; // Игнорируем неизвестные пары
+        }
+        document.getElementById('outputText').value = originalText.toLowerCase();
+    }
 }
-
-// Инициализация шифра
-const cipher = new ADFGVXCipher();
-
+// Создаем экземпляр класса ADFGVX
+const adfgvx = new ADFGVX();
 // Обработка событий кнопок
-document.getElementById('encryptBtn').addEventListener('click', () => {
-  const key = document.getElementById('key').value;
-  const inputText = document.getElementById('inputText').value;
-  const outputText = cipher.encrypt(inputText, key);
-  document.getElementById('outputText').value = cipher.preserveCase(inputText, outputText);
-});
+document.getElementById('encryptBtn').addEventListener('click', () => adfgvx.encrypt());
+document.getElementById('decryptBtn').addEventListener('click', () => adfgvx.decrypt());
 
-document.getElementById('decryptBtn').addEventListener('click', () => {
-  const key = document.getElementById('key').value;
-  const inputText = document.getElementById('inputText').value;
-  const outputText = cipher.decrypt(inputText, key);
-  document.getElementById('outputText').value = cipher.preserveCase(inputText, outputText);
-});
